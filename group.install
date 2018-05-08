@@ -426,9 +426,23 @@ function group_update_8014() {
 }
 
 /**
- * Update the group members view to use the new cache group permissions context.
+ * Install 'group_config' entity type.
  */
 function group_update_8015() {
+  $container = \Drupal::getContainer();
+
+  /** @var \Drupal\Core\Entity\EntityTypeManagerInterface $entity_manager */
+  $entity_manager = $container->get('entity_type.manager');
+  $storage_handler = $entity_manager->getHandler('group_config', 'storage');
+  $entity_type = $entity_manager->getDefinition('group_config');
+  $new_storage = $entity_manager->createHandlerInstance($storage_handler, $entity_type);
+  $new_storage->onEntityTypeCreate($entity_type);
+}
+
+/**
+ * Update the group members view to use the new cache group permissions context.
+ */
+function group_update_8016() {
   if (\Drupal::moduleHandler()->moduleExists('views')) {
     $view = \Drupal::configFactory()->getEditable('views.view.group_members');
     if (!$view->isNew()) {

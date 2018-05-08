@@ -2,9 +2,10 @@
 
 namespace Drupal\group\Entity;
 
-use Drupal\user\EntityOwnerInterface;
 use Drupal\Core\Entity\ContentEntityInterface;
 use Drupal\Core\Entity\EntityChangedInterface;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\user\EntityOwnerInterface;
 
 /**
  * Provides an interface defining a Group content entity.
@@ -55,12 +56,12 @@ interface GroupContentInterface extends ContentEntityInterface, EntityOwnerInter
   /**
    * Loads group content entities which reference a given entity.
    *
-   * @param \Drupal\Core\Entity\ContentEntityInterface $entity
+   * @param \Drupal\Core\Entity\EntityInterface $entity
    *   An entity which may be within one or more groups.
    *
    * @return \Drupal\group\Entity\GroupContentInterface[]
    *   An array of group content entities which reference the given entity.
    */
-  public static function loadByEntity(ContentEntityInterface $entity);
+  public static function loadByEntity(EntityInterface $entity);
 
 }

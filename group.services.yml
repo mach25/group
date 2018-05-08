@@ -97,7 +97,7 @@ services:
   # @todo Rename to group_permission.builder in 8.2.0.
   group.permissions:
     class: 'Drupal\group\Access\GroupPermissionHandler'
-    arguments: ['@module_handler', '@string_translation', '@controller_resolver', '@plugin.manager.group_content_enabler']
+    arguments: ['@module_handler', '@string_translation', '@controller_resolver', '@plugin.manager.group_content_enabler', '@plugin.manager.group_config_enabler']
   # @todo Rename to group_permission.hash_generator in 8.2.0.
   group.permissions_hash_generator:
     class: 'Drupal\group\Access\GroupPermissionsHashGenerator'
@@ -180,3 +180,46 @@ services:
     class: Drupal\group\CoreFix\Cache\VariationCacheBackendInterface
     factory: corefix_variation_cache_factory:get
     arguments: [corefix_static_no_serialize]
+  access_check.group.installed_config:
+    class: 'Drupal\group\Access\GroupInstalledConfigAccessCheck'
+    tags:
+      - { name: 'access_check', applies_to: '_group_installed_config' }
+  access_check.group.owns_config:
+    class: 'Drupal\group\Access\GroupOwnsConfigAccessCheck'
+    tags:
+      - { name: 'access_check', applies_to: '_group_owns_config' }
+  access_check.group_config.create:
+    class: 'Drupal\group\Access\GroupConfigCreateAccessCheck'
+    arguments: ['@entity.manager']
+    tags:
+      - { name: 'access_check', applies_to: '_group_config_create_access' }
+  access_check.group_config.create_any:
+    class: 'Drupal\group\Access\GroupConfigCreateAnyAccessCheck'
+    arguments: ['@entity.manager']
+    tags:
+      - { name: 'access_check', applies_to: '_group_config_create_any_access' }
+  access_check.group_config.create_entity:
+    class: 'Drupal\group\Access\GroupConfigCreateEntityAccessCheck'
+    tags:
+      - { name: 'access_check', applies_to: '_group_config_create_entity_access' }
+  access_check.group_config.create_any_entity:
+    class: 'Drupal\group\Access\GroupConfigCreateAnyEntityAccessCheck'
+    tags:
+      - { name: 'access_check', applies_to: '_group_config_create_any_entity_access' }
+  group.uninstall_validator.group_config:
+    class: 'Drupal\group\UninstallValidator\GroupConfigUninstallValidator'
+    tags:
+      - { name: 'module_install.uninstall_validator' }
+    arguments: ['@string_translation', '@entity.query', '@plugin.manager.group_config_enabler']
+    lazy: 'true'
+
+  group_config_type.breadcrumb:
+    class: 'Drupal\group\Breadcrumb\GroupConfigTypeBreadcrumbBuilder'
+    tags:
+      - { name: 'breadcrumb_builder', priority: 100 }
+  plugin.manager.group_config_enabler:
+    class: 'Drupal\group\Plugin\GroupConfigEnablerManager'
+    arguments: ['@container.namespaces', '@cache.discovery', '@module_handler', '@entity_type.manager']
+    tags:
+      - { name: plugin_manager_cache_clear }
+

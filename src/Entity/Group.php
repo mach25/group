@@ -2,12 +2,12 @@
 
 namespace Drupal\group\Entity;
 
-use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Entity\ContentEntityBase;
-use Drupal\Core\Entity\ContentEntityInterface;
-use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Entity\EntityChangedTrait;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\user\UserInterface;
 
@@ -159,7 +159,7 @@ class Group extends ContentEntityBase implements GroupInterface {
   /**
    * {@inheritdoc}
    */
-  public function addContent(ContentEntityInterface $entity, $plugin_id, $values = []) {
+  public function addContent(EntityInterface $entity, $plugin_id, $values = []) {
     $storage = $this->groupContentStorage();
     $group_content = $storage->createForEntityInGroup($entity, $this, $plugin_id, $values);
     $storage->save($group_content);

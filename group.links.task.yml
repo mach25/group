@@ -35,6 +35,12 @@ group.content:
   route_name: 'entity.group_content.collection'
   weight: 15
 
+group.config:
+  title: 'Related config entities'
+  base_route: 'entity.group.canonical'
+  route_name: 'entity.group_config.collection'
+  weight: 15
+
 group_type.edit_form:
   title: 'Edit'
   base_route: 'entity.group_type.edit_form'
@@ -69,6 +75,12 @@ group_type.content_plugins:
   title: 'Content'
   base_route: 'entity.group_type.edit_form'
   route_name: 'entity.group_type.content_plugins'
+  weight: 25
+
+group_type.config_plugins:
+  title: 'Config'
+  base_route: 'entity.group_type.edit_form'
+  route_name: 'entity.group_type.config_plugins'
   weight: 25
 
 group_content_type.edit_form:
@@ -108,4 +120,21 @@ group_content.delete:
   title: 'Remove'
   base_route: 'entity.group_content.canonical'
   route_name: 'entity.group_content.delete_form'
+  weight: 10
+
+group_config.view:
+  title: 'View'
+  base_route: 'entity.group_config.canonical'
+  route_name: 'entity.group_config.canonical'
+
+group_config.edit:
+  title: 'Edit'
+  base_route: 'entity.group_config.canonical'
+  route_name: 'entity.group_config.edit_form'
+  weight: 5
+
+group_config.delete:
+  title: 'Remove'
+  base_route: 'entity.group_config.canonical'
+  route_name: 'entity.group_config.delete_form'
   weight: 10

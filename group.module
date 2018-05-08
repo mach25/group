@@ -15,6 +15,7 @@ use Drupal\Core\Render\Element;
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\group\Entity\GroupContent;
+use Drupal\group\Entity\GroupConfig;
 use Drupal\user\RoleInterface;
 
 /**
@@ -23,7 +24,10 @@ use Drupal\user\RoleInterface;
 function group_help($route_name, RouteMatchInterface $route_match) {
   switch ($route_name) {
     case 'entity.group_type.content_plugins':
-      return '<p>' . t('Entities that can be added to this group type.') . '</p>';
+      return '<p>' . t('Content Entities that can be added to this group type.') . '</p>';
+
+    case 'entity.group_type.config_plugins':
+      return '<p>' . t('Config Entities that can be added to this group type.') . '</p>';
   }
 }
 
@@ -46,6 +50,9 @@ function group_theme() {
       'render element' => 'elements',
     ],
     'group_content' => [
+      'render element' => 'elements',
+    ],
+    'group_config' => [
       'render element' => 'elements',
     ],
   ];
@@ -90,9 +97,28 @@ function group_theme_suggestions_group_content(array $variables) {
 }
 
 /**
+ * Implements hook_theme_suggestions_HOOK().
+ */
+function group_theme_suggestions_group_config(array $variables) {
+  $suggestions = [];
+
+  /** @var \Drupal\group\Entity\GroupConfigInterface $group_config */
+  $group_config = $variables['elements']['#group_config'];
+  $sanitized_view_mode = strtr($variables['elements']['#view_mode'], '.', '_');
+
+  $suggestions[] = 'group_config__' . $sanitized_view_mode;
+  $suggestions[] = 'group_config__' . $group_config->bundle();
+  $suggestions[] = 'group_config__' . $group_config->bundle() . '__' . $sanitized_view_mode;
+  $suggestions[] = 'group_config__' . $group_config->id();
+  $suggestions[] = 'group_config__' . $group_config->id() . '__' . $sanitized_view_mode;
+
+  return $suggestions;
+}
+
+/**
  * Prepares variables for the group template.
  *
- * Default template: group.html.twig
+ * Default template: group.html.twig.
  *
  * @param array $variables
  *   - elements: An array of elements to display in view mode.
@@ -126,7 +152,7 @@ function template_preprocess_group(&$variables) {
 /**
  * Prepares variables for the group content template.
  *
- * Default template: group-content.html.twig
+ * Default template: group-content.html.twig.
  *
  * @param array $variables
  *   - elements: An array of elements to display in view mode.
@@ -158,10 +184,45 @@ function template_preprocess_group_content(&$variables) {
 }
 
 /**
+ * Prepares variables for the group content template.
+ *
+ * Default template: group-content.html.twig.
+ *
+ * @param array $variables
+ *   - elements: An array of elements to display in view mode.
+ *   - group_config: The group content object.
+ *   - view_mode: View mode; e.g., 'full', 'teaser', etc.
+ */
+function template_preprocess_group_config(&$variables) {
+  /** @var \Drupal\group\Entity\GroupContentInterface $group_config */
+  $group_config = $variables['elements']['#group_config'];
+
+  $variables['group_config'] = $group_config;
+  $variables['view_mode'] = $variables['elements']['#view_mode'];
+  $variables['label'] = $group_config->label();
+  $variables['url'] = $group_config->toUrl('canonical', ['language' => $group_config->language()]);
+
+  // See if we are rendering the group at its canonical route.
+  $route_match = \Drupal::routeMatch();
+  if ($route_match->getRouteName() == 'entity.group_config.canonical') {
+    $page_group_config = $route_match->getParameter('group_config');
+  }
+  $is_page = (!empty($page_group_config) ? $page_group_config->id() == $group_config->id() : FALSE);
+  $variables['page'] = $variables['view_mode'] == 'full' && $is_page;
+
+  // Helpful $content variable for templates.
+  $variables += ['content' => []];
+  foreach (Element::children($variables['elements']) as $key) {
+    $variables['content'][$key] = $variables['elements'][$key];
+  }
+}
+
+/**
  * Implements hook_rebuild().
  */
 function group_rebuild() {
   _group_content_enabler_manager()->installEnforced();
+  _group_config_enabler_manager()->installEnforced();
 
   /** @var \Drupal\group\Entity\Storage\GroupRoleStorageInterface $storage */
   $storage = \Drupal::entityTypeManager()->getStorage('group_role');
@@ -176,6 +237,7 @@ function group_modules_installed($modules) {
   // Only create config objects while config import is not in progress.
   if (!\Drupal::isConfigSyncing()) {
     _group_content_enabler_manager()->installEnforced();
+    _group_config_enabler_manager()->installEnforced();
 
     /** @var \Drupal\group\Entity\Storage\GroupRoleStorageInterface $storage */
     $storage = \Drupal::entityTypeManager()->getStorage('group_role');
@@ -205,12 +267,10 @@ function group_form_block_form_alter(&$form, FormStateInterface $form_state, $fo
  * Implements hook_entity_delete().
  */
 function group_entity_delete(EntityInterface $entity) {
-  if ($entity instanceof ContentEntityInterface) {
-    if ($group_contents = GroupContent::loadByEntity($entity)) {
-      /** @var \Drupal\group\Entity\GroupContent $group_content */
-      foreach ($group_contents as $group_content) {
-        $group_content->delete();
-      }
+  if ($group_contents = GroupContent::loadByEntity($entity)) {
+    /** @var \Drupal\group\Entity\GroupContent $group_content */
+    foreach ($group_contents as $group_content) {
+      $group_content->delete();
     }
   }
 }
@@ -293,6 +353,12 @@ function group_user_cancel($edit, $account, $method) {
         /** @var \Drupal\group\Entity\GroupInterface $group */
         $group->set('uid', 1);
         $storage->save($group);
+      }
+    }
+    if ($group_configs = GroupConfig::loadByEntity($entity)) {
+      /** @var \Drupal\group\Entity\GroupConfig $group_config */
+      foreach ($group_configs as $group_config) {
+        $group_config->delete();
       }
     }
   }
@@ -545,7 +611,6 @@ function group_content_entity_submit($form, FormStateInterface $form_state) {
  */
 
 // Nothing to see here yet, our own access hook implementations will go here.
-
 /**
  * @} End of "defgroup group_access".
  */
@@ -560,6 +625,18 @@ function group_content_entity_submit($form, FormStateInterface $form_state) {
  */
 function _group_content_enabler_manager() {
   return \Drupal::service('plugin.manager.group_content_enabler');
+}
+
+/**
+ * Gets the group config enabler plugin manager.
+ *
+ * @return \Drupal\group\Plugin\GroupConfigEnablerManagerInterface
+ *   The group config enabler plugin manager.
+ *
+ * @internal Try to properly inject the service when possible.
+ */
+function _group_config_enabler_manager() {
+  return \Drupal::service('plugin.manager.group_config_enabler');
 }
 
 /**

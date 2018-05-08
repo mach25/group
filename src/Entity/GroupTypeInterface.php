@@ -194,4 +194,83 @@ interface GroupTypeInterface extends ConfigEntityInterface, EntityDescriptionInt
    */
   public function uninstallContentPlugin($plugin_id);
 
+  /**
+   * Returns the installed config enabler plugins for this group type.
+   *
+   * @return \Drupal\group\Plugin\GroupConfigEnablerCollection
+   *   The group config plugin collection.
+   */
+  public function getInstalledConfigPlugins();
+
+  /**
+   * Checks whether a config enabler plugin is installed for this group type.
+   *
+   * @param string $plugin_id
+   *   The ID of the config enabler plugin to check for.
+   *
+   * @return bool
+   *   Whether the config enabler plugin is installed.
+   */
+  public function hasConfigPlugin($plugin_id);
+
+  /**
+   * Gets an installed config enabler plugin for this group type.
+   *
+   * Warning: In places where the plugin may not be installed on the group type,
+   * you should always run ::hasConfigPlugin() first or you may risk ending up
+   * with crashes or unreliable data.
+   *
+   * @param string $plugin_id
+   *   The ID of the config enabler plugin.
+   *
+   * @return \Drupal\group\Plugin\GroupConfigEnablerInterface
+   *   The installed config enabler plugin for the group type.
+   */
+  public function getConfigPlugin($plugin_id);
+
+  /**
+   * Adds a config enabler plugin to this group type.
+   *
+   * @param string $plugin_id
+   *   The ID of the config enabler plugin to add.
+   * @param array $configuration
+   *   (optional) An array of config enabler plugin configuration.
+   *
+   * @return $this
+   *
+   * @deprecated in Group 1.0-beta3, will be removed before Group 1.0-rc1. Use
+   *   \Drupal\group\Entity\Storage\GroupConfigTypeStorageInterface::
+   *   createFromPlugin() instead.
+   */
+  public function installConfigPlugin($plugin_id, array $configuration = []);
+
+  /**
+   * Updates the configuration of a config enabler plugin for this group type.
+   *
+   * @param string $plugin_id
+   *   The ID of the config enabler plugin to add.
+   * @param array $configuration
+   *   An array of config enabler plugin configuration.
+   *
+   * @return $this
+   *
+   * @deprecated in Group 1.0-beta3, will be removed before Group 1.0-rc1. Use
+   *   \Drupal\group\Entity\GroupConfigTypeInterface::updateConfigPlugin()
+   *   instead.
+   */
+  public function updateConfigPlugin($plugin_id, array $configuration);
+
+  /**
+   * Removes a config enabler plugin from this group type.
+   *
+   * @param string $plugin_id
+   *   The config enabler plugin ID.
+   *
+   * @return $this
+   *
+   * @deprecated in Group 1.0-beta3, will be removed before Group 1.0-rc1. Use
+   *   \Drupal\group\Entity\GroupConfigType::delete() instead.
+   */
+  public function uninstallConfigPlugin($plugin_id);
+
 }

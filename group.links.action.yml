@@ -36,3 +36,9 @@ group_content.create_page:
   title: 'Add new entity'
   appears_on:
     - 'entity.group_content.collection'
+
+group_config.add_page:
+  route_name: 'entity.group_config.add_page'
+  title: 'Relate existing config entity to group'
+  appears_on:
+    - 'entity.group_config.collection'

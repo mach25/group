@@ -42,6 +42,7 @@ use Drupal\Core\Entity\EntityStorageInterface;
  *     "add-form" = "/admin/group/types/add",
  *     "collection" = "/admin/group/types",
  *     "content-plugins" = "/admin/group/types/manage/{group_type}/content",
+ *     "config-plugins" = "/admin/group/types/manage/{group_type}/config",
  *     "delete-form" = "/admin/group/types/manage/{group_type}/delete",
  *     "edit-form" = "/admin/group/types/manage/{group_type}",
  *     "permissions-form" = "/admin/group/types/manage/{group_type}/permissions"
@@ -293,6 +294,16 @@ class GroupType extends ConfigEntityBundleBase implements GroupTypeInterface {
   }
 
   /**
+   * Returns the content enabler plugin manager.
+   *
+   * @return \Drupal\group\Plugin\GroupConfigEnablerManagerInterface
+   *   The group content plugin manager.
+   */
+  protected function getConfigEnablerManager() {
+    return \Drupal::service('plugin.manager.group_config_enabler');
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function getInstalledContentPlugins() {
@@ -339,6 +350,56 @@ class GroupType extends ConfigEntityBundleBase implements GroupTypeInterface {
   public function uninstallContentPlugin($plugin_id) {
     $plugin = $this->getContentPlugin($plugin_id);
     GroupContentType::load($plugin->getContentTypeConfigId())->delete();
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getInstalledConfigPlugins() {
+    return $this->getConfigEnablerManager()->getInstalled($this);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function hasConfigPlugin($plugin_id) {
+    $installed = $this->getConfigEnablerManager()->getInstalledIds($this);
+    return in_array($plugin_id, $installed);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getConfigPlugin($plugin_id) {
+    return $this->getInstalledConfigPlugins()->get($plugin_id);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function installConfigPlugin($plugin_id, array $configuration = []) {
+    /** @var \Drupal\group\Entity\Storage\GroupConfigTypeStorageInterface $storage */
+    $storage = $this->entityTypeManager()->getStorage('group_config_type');
+    $storage->createFromPlugin($this, $plugin_id, $configuration)->save();
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function updateConfigPlugin($plugin_id, array $configuration) {
+    $plugin = $this->getConfigPlugin($plugin_id);
+    GroupConfigType::load($plugin->getConfigTypeConfigId())->updateConfigPlugin($configuration);
+    return $this;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function uninstallConfigPlugin($plugin_id) {
+    $plugin = $this->getConfigPlugin($plugin_id);
+    GroupConfigType::load($plugin->getConfigTypeConfigId())->delete();
     return $this;
   }
 

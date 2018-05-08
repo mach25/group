@@ -153,6 +153,15 @@ class GroupPermissionHandler implements GroupPermissionHandlerInterface {
       }
     }
 
+    // Add the plugin defined permissions to the whole.
+    foreach ($group_type->getInstalledConfigPlugins() as $plugin) {
+      /** @var \Drupal\group\Plugin\GroupContentEnablerInterface $plugin */
+      foreach ($plugin->getPermissions() as $permission_name => $permission) {
+        $permission += ['provider' => $plugin->getProvider()];
+        $all_permissions[$permission_name] = $this->completePermission($permission);
+      }
+    }
+
     return $this->sortPermissions($all_permissions);
   }
 

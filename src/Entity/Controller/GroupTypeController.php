@@ -2,8 +2,11 @@
 
 namespace Drupal\group\Entity\Controller;
 
+use Drupal\group\Entity\GroupConfigType;
 use Drupal\group\Entity\GroupTypeInterface;
 use Drupal\group\Entity\GroupContentType;
+use Drupal\group\Plugin\GroupConfigEnablerInterface;
+use Drupal\group\Plugin\GroupConfigEnablerManagerInterface;
 use Drupal\group\Plugin\GroupContentEnablerInterface;
 use Drupal\group\Plugin\GroupContentEnablerManagerInterface;
 use Drupal\Core\Url;
@@ -32,6 +35,15 @@ class GroupTypeController extends ControllerBase {
   protected $pluginManager;
 
   /**
+   * Fig
+   * The group content plugin manager.
+   *
+   * @var \Drupal\group\Plugin\GroupConfigEnablerManagerInterface
+   */
+
+  protected $configPluginManager;
+
+  /**
    * The module manager.
    *
    * @var \Drupal\Core\Extension\ModuleHandlerInterface
@@ -54,11 +66,14 @@ class GroupTypeController extends ControllerBase {
    *   The entity type manager.
    * @param \Drupal\group\Plugin\GroupContentEnablerManagerInterface $plugin_manager
    *   The group content plugin manager.
+   * @param \Drupal\group\Plugin\GroupConfigEnablerManagerInterface $config_plugin_manager
+   *   The group config plugin manager.
    */
-  public function __construct(ModuleHandlerInterface $module_handler, EntityTypeManagerInterface $entity_type_manager, GroupContentEnablerManagerInterface $plugin_manager) {
+  public function __construct(ModuleHandlerInterface $module_handler, EntityTypeManagerInterface $entity_type_manager, GroupContentEnablerManagerInterface $plugin_manager, GroupConfigEnablerManagerInterface $config_plugin_manager) {
     $this->moduleHandler = $module_handler;
     $this->entityTypeManager = $entity_type_manager;
     $this->pluginManager = $plugin_manager;
+    $this->configPluginManager = $config_plugin_manager;
   }
 
   /**
@@ -68,7 +83,8 @@ class GroupTypeController extends ControllerBase {
     return new static(
       $container->get('module_handler'),
       $container->get('entity_type.manager'),
-      $container->get('plugin.manager.group_content_enabler')
+      $container->get('plugin.manager.group_content_enabler'),
+      $container->get('plugin.manager.group_config_enabler')
     );
   }
 
@@ -99,7 +115,7 @@ class GroupTypeController extends ControllerBase {
         'status' => $this->t('Status'),
         'operations' => $this->t('Operations'),
       ],
-      '#suffix' =>  $this->t('<em>* These plugins are set to be always on by their providing module.</em>'),
+      '#suffix' => $this->t('<em>* These plugins are set to be always on by their providing module.</em>'),
     ];
 
     $installed = $this->pluginManager->getInstalledIds($group_type);
@@ -111,6 +127,50 @@ class GroupTypeController extends ControllerBase {
         $plugin = $this->groupType->getContentPlugin($plugin_id);
       }
       $page['content'][$plugin_id] = $this->buildRow($plugin);
+    }
+
+    return $page;
+  }
+
+  /**
+   * Builds an admin interface to manage the group type's group content plugins.
+   *
+   * @param \Drupal\group\Entity\GroupTypeInterface $group_type
+   *   The group type to build an interface for.
+   *
+   * @return array
+   *   The render array for the page.
+   */
+  public function config_entity(GroupTypeInterface $group_type) {
+    $this->groupType = $group_type;
+
+    // Render the table of available content enablers.
+    $page['system_compact_link'] = [
+      '#id' => FALSE,
+      '#type' => 'system_compact_link',
+    ];
+
+    $page['content'] = [
+      '#type' => 'table',
+      '#header' => [
+        'info' => $this->t('Plugin information'),
+        'provider' => $this->t('Provided by'),
+        'entity_type_id' => $this->t('Applies to'),
+        'status' => $this->t('Status'),
+        'operations' => $this->t('Operations'),
+      ],
+      '#suffix' => $this->t('<em>* These plugins are set to be always on by their providing module.</em>'),
+    ];
+
+    $installed = $this->configPluginManager->getInstalledIds($group_type);
+    foreach ($this->configPluginManager->getAll() as $plugin_id => $plugin) {
+      // If the plugin is installed on the group type, use that one instead of
+      // an 'empty' version so that we may use methods on it which expect to
+      // have a group type configured.
+      if (in_array($plugin_id, $installed)) {
+        $plugin = $this->groupType->getConfigPlugin($plugin_id);
+      }
+      $page['content'][$plugin_id] = $this->buildConfigRow($plugin);
     }
 
     return $page;
@@ -150,10 +210,61 @@ class GroupTypeController extends ControllerBase {
         ],
       ],
       'provider' => [
-        '#markup' => $this->moduleHandler->getName($plugin->getProvider())
+        '#markup' => $this->moduleHandler->getName($plugin->getProvider()),
       ],
       'entity_type_id' => [
-        '#markup' => $this->entityTypeManager->getDefinition($plugin->getEntityTypeId())->getLabel()
+        '#markup' => $this->entityTypeManager->getDefinition($plugin->getEntityTypeId())->getLabel(),
+      ],
+      'status' => ['#markup' => $status],
+      'operations' => $this->buildOperations($plugin),
+    ];
+
+    // Show the content enabler description if toggled on.
+    if (!system_admin_compact_mode()) {
+      $row['info']['#context']['description'] = $plugin->getDescription();
+    }
+
+    return $row;
+  }
+
+  /**
+   * Builds a row for a content enabler plugin.
+   *
+   * @param \Drupal\group\Plugin\GroupConfigEnablerInterface $plugin
+   *   The content enabler plugin to build operation links for.
+   *
+   * @return array
+   *   A render array to use as a table row.
+   */
+  public function buildConfigRow(GroupConfigEnablerInterface $plugin) {
+    $installed = $this->configPluginManager->getInstalledIds($this->groupType);
+
+    // Get the plugin status.
+    if (in_array($plugin->getPluginId(), $installed)) {
+      $status = $this->t('Installed');
+
+      // Mark enforced plugins with an asterisk.
+      if ($plugin->isEnforced()) {
+        $status .= '*';
+      }
+    }
+    else {
+      $status = $this->t('Not installed');
+    }
+
+    $row = [
+      'info' => [
+        '#type' => 'inline_template',
+        '#template' => '<div class="description"><span class="label">{{ label }}</span>{% if description %}<br/>{{ description }}{% endif %}</div>',
+        '#context' => [
+          'label' => $plugin->getLabel(),
+        ],
+      ],
+      'provider' => [
+        '#markup' => $this->moduleHandler->getName($plugin->getProvider()),
+      ],
+      'entity_type_id' => [
+        '#markup' => $this->entityTypeManager->getDefinition($plugin->getEntityTypeId())->getLabel(),
       ],
       'status' => ['#markup' => $status],
       'operations' => $this->buildOperations($plugin),
@@ -181,7 +292,12 @@ class GroupTypeController extends ControllerBase {
    *   - weight: The weight of this operation.
    */
   public function getOperations($plugin) {
-    return $plugin->getOperations() + $this->getDefaultOperations($plugin);
+    if ($plugin instanceof GroupContentEnablerInterface) {
+      return $plugin->getOperations() + $this->getContentDefaultOperations($plugin);
+    }
+    if ($plugin instanceof GroupConfigEnablerInterface) {
+      return $plugin->getOperations() + $this->getConfigDefaultOperations($plugin);
+    }
   }
 
   /**
@@ -194,7 +310,7 @@ class GroupTypeController extends ControllerBase {
    *   The array structure is identical to the return value of
    *   self::getOperations().
    */
-  protected function getDefaultOperations($plugin) {
+  protected function getContentDefaultOperations($plugin) {
     $operations = [];
 
     $plugin_id = $plugin->getPluginId();
@@ -230,6 +346,58 @@ class GroupTypeController extends ControllerBase {
       $operations['install'] = [
         'title' => $this->t('Install'),
         'url' => new Url('entity.group_content_type.add_form', ['group_type' => $this->groupType->id(), 'plugin_id' => $plugin_id]),
+      ];
+    }
+
+    return $operations;
+  }
+
+  /**
+   * Gets the group type's config plugin's default operation links.
+   *
+   * @param \Drupal\group\Plugin\GroupConfigEnablerInterface $plugin
+   *   The content enabler plugin to build operation links for.
+   *
+   * @return array
+   *   The array structure is identical to the return value of
+   *   self::getOperations().
+   */
+  protected function getConfigDefaultOperations($plugin) {
+    $operations = [];
+
+    $plugin_id = $plugin->getPluginId();
+    $installed = $this->configPluginManager->getInstalledIds($this->groupType);
+
+    if (in_array($plugin_id, $installed)) {
+      /** @var \Drupal\group\Entity\GroupConfigTypeInterface $group_config_type */
+      $group_config_type_id = $plugin->getConfigTypeConfigId();
+      $group_config_type = GroupConfigType::load($group_config_type_id);
+
+      $route_params = [
+        'group_config_type' => $group_config_type_id,
+      ];
+
+      $operations['configure'] = [
+        'title' => $this->t('Configure'),
+        'url' => new Url('entity.group_config_type.edit_form', $route_params),
+      ];
+
+      if (!$plugin->isEnforced()) {
+        $operations['uninstall'] = [
+          'title' => $this->t('Uninstall'),
+          'weight' => 99,
+          'url' => new Url('entity.group_config_type.delete_form', $route_params),
+        ];
+      }
+
+      if ($this->moduleHandler->moduleExists('field_ui')) {
+        $operations += field_ui_entity_operation($group_config_type);
+      }
+    }
+    elseif (!$plugin->isEnforced()) {
+      $operations['install'] = [
+        'title' => $this->t('Install'),
+        'url' => new Url('entity.group_config_type.add_form', ['group_type' => $this->groupType->id(), 'plugin_id' => $plugin_id]),
       ];
     }
 

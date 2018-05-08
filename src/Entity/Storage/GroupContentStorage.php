@@ -2,7 +2,7 @@
 
 namespace Drupal\group\Entity\Storage;
 
-use Drupal\Core\Entity\ContentEntityInterface;
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Entity\EntityStorageException;
 use Drupal\Core\Entity\Sql\SqlContentEntityStorage;
 use Drupal\group\Entity\GroupInterface;
@@ -18,7 +18,7 @@ class GroupContentStorage extends SqlContentEntityStorage implements GroupConten
   /**
    * {@inheritdoc}
    */
-  public function createForEntityInGroup(ContentEntityInterface $entity, GroupInterface $group, $plugin_id, $values = []) {
+  public function createForEntityInGroup(EntityInterface $entity, GroupInterface $group, $plugin_id, $values = []) {
     // An unsaved entity cannot have any group content.
     if ($entity->id() === NULL) {
       throw new EntityStorageException("Cannot add an unsaved entity to a group.");
@@ -78,7 +78,7 @@ class GroupContentStorage extends SqlContentEntityStorage implements GroupConten
   /**
    * {@inheritdoc}
    */
-  public function loadByEntity(ContentEntityInterface $entity) {
+  public function loadByEntity(EntityInterface $entity) {
     // An unsaved entity cannot have any group content.
     if ($entity->id() === NULL) {
       throw new EntityStorageException("Cannot load GroupContent entities for an unsaved entity.");
