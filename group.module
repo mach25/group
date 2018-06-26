@@ -355,7 +355,7 @@ function group_user_cancel($edit, $account, $method) {
         $storage->save($group);
       }
     }
-    if ($group_configs = GroupConfig::loadByEntity($entity)) {
+    if ($group_configs = GroupConfig::loadByEntity($account)) {
       /** @var \Drupal\group\Entity\GroupConfig $group_config */
       foreach ($group_configs as $group_config) {
         $group_config->delete();
