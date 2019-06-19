@@ -153,15 +153,26 @@ function gnode_node_access(NodeInterface $node, $op, AccountInterface $account) 
  * @see gnode_node_access_records()
  */
 function gnode_node_grants(AccountInterface $account, $op) {
+  $accountId = $account->id();
+  $cache = &drupal_static(__FUNCTION__, []);
+  if (empty($cache[$accountId])) {
+    $cache[$accountId] = [];
+  }
+  if (!empty($cache[$accountId][$op])) {
+    return $cache[$accountId][$op];
+  }
+
   // Provide the master grant for users who can bypass group access.
   if ($account->hasPermission('bypass group access')) {
-    return ['gnode_bypass' => [GNODE_MASTER_GRANT_ID]];
+    $cache[$accountId][$op] = ['gnode_bypass' => [GNODE_MASTER_GRANT_ID]];
+    return $cache[$accountId][$op];
   }
 
   // Anonymous users get the anonymous grant. See the implementation in the
   // gnode_node_access_records() function as to why that is.
   if ($account->isAnonymous()) {
-    return ['gnode_anonymous' => [GNODE_MASTER_GRANT_ID]];
+    $cache[$accountId][$op] = ['gnode_anonymous' => [GNODE_MASTER_GRANT_ID]];
+    return $cache[$accountId][$op];
   }
 
   // Gather the machine names of all node types.
@@ -277,7 +288,8 @@ function gnode_node_grants(AccountInterface $account, $op) {
   }
 
   // Recursively merge the member grants with the outsider grants.
-  return array_merge_recursive($grants_m, $grants_o);
+  $cache[$accountId][$op] = array_merge_recursive($grants_m, $grants_o);
+  return $cache[$accountId][$op];
 }
 
 /**
